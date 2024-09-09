@@ -14,7 +14,7 @@ start.o: start.S
 	aarch64-linux-gnu-gcc $(CFLAGS) -I ./lib/include -c $< -o $@
 
 kernel8.img: start.o $(OBJS)
-	$(CROSS_COMPILER_PREFIX)-ld -nostdlib start.o $(OBJS) -T link.ld -o kernel8.elf
+	$(CROSS_COMPILER_PREFIX)-ld -nostdlib start.o $(OBJS) -T linker.ld -o kernel8.elf
 	$(CROSS_COMPILER_PREFIX)-objcopy -O binary kernel8.elf kernel8.img
 	$(CROSS_COMPILER_PREFIX)-size kernel8.elf
 
