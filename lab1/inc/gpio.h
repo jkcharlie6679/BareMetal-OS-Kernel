@@ -1,5 +1,3 @@
-
-
 #define MMIO_BASE       0x3F000000 // Physical addresses range from 0x3F000000 to 0x3FFFFFFF for peripherals.
 
 #define GPFSEL0         ((volatile unsigned int*)(MMIO_BASE+0x00200000))
