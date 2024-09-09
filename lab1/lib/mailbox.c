@@ -13,7 +13,6 @@ volatile unsigned int  __attribute__((aligned(16))) mbox[8];
 #define MAILBOX_FULL      0x80000000
 #define MAILBOX_EMPTY     0x40000000
 
-
 static int mbox_call(unsigned char ch) {
   unsigned int r = (((unsigned int)((unsigned long)&mbox) & (~0xF)) | (ch & 0xf));
 
