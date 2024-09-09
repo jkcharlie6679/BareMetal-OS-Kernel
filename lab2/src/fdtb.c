@@ -1,12 +1,15 @@
-#include "dtb.h"
+#include "fdtb.h"
 #include "printf.h"
 #include "utilities.h"
 #include "string.h"
+#include "cpio.h"
+
+char *fdtb_place = NULL;
 
 void fdt_traverse(dtb_callback callback){
-  struct fdt_header* header = (struct fdt_header*) dtb_place;
+  struct fdt_header* header = (struct fdt_header*) fdtb_place;
 
-  if(little_2_big_u32(header->magic) != 0xD00DFEED){
+  if (little_2_big_u32(header->magic) != 0xD00DFEED) {
     printf("fdt_traverse : wrong magic in fdt_traverse\n\r");
     return;
   }
@@ -18,14 +21,14 @@ void fdt_traverse(dtb_callback callback){
   char* pointer = dt_struct_ptr;
   struct fdt_prod *prod_ptr;
 
-  while(pointer < end){
+  while (pointer < end) {
     uint32_t token_type = little_2_big_u32(*(uint32_t*)pointer);
     pointer += 4;
-    if(token_type == FDT_BEGIN_NODE) { 
+    if (token_type == FDT_BEGIN_NODE) {
       callback(token_type, pointer, 0, 0);
       pointer += strlen(pointer);
-      pointer += 4 - (unsigned long long)pointer%4;           //alignment 4 byte
-    }else if(token_type == FDT_PROP) {
+      pointer += 4 - (uint64_t) pointer % 4; //alignment 4 byte
+    } else if (token_type == FDT_PROP) {
       prod_ptr = (struct fdt_prod *) pointer;
       pointer += 8;  // add the fdt_prod len
       uint32_t len = little_2_big_u32(prod_ptr->len);
@@ -33,15 +36,15 @@ void fdt_traverse(dtb_callback callback){
       printf("name: %s, addr: 0x%x\n\r", name, pointer);
       callback(token_type, name, pointer, len);
       pointer += len;
-      if((unsigned long long)pointer % 4 !=0){
-        pointer += 4 - (unsigned long long)pointer%4;   //alignment 4 byte
+      if ((uint64_t)pointer % 4 !=0) {
+        pointer += 4 - (uint64_t)pointer%4;   //alignment 4 byte
       }
     }
   }
 }
 
 void initramfs_callback(uint32_t node_type, char *name, void *value, uint32_t name_size) {
-  if(node_type==FDT_PROP && strcmp(name,"linux,initrd-start")==0){
-    CPIO_DEFAULT_PLACE = (void *)(unsigned long long)little_2_big_u32(*(uint32_t*)value);
+  if (node_type == FDT_PROP && strcmp(name, "linux,initrd-start") == 0) {
+    CPIO_DEFAULT_PLACE = (void *)(uint64_t)little_2_big_u32(*(uint32_t*)value);
   }
 }

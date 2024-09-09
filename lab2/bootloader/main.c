@@ -30,16 +30,13 @@ void main (char* arg) {
 
   uint64_t kernel_size = 0;
   char* kernel_start = (char*) 0x80000;
-  char c;
   
   printf("Welcome UART bootloader!!\n\r");
 
   for (int i = 0; i < 4; i++) {
-    /*c = uart_getc_pure();*/
     kernel_size += uart_getc_pure() << (i * 8);
   }
   for (int i = 0; i < kernel_size; i++) {
-    /*c = uart_getc_pure();*/
     kernel_start[i] = uart_getc_pure();
   }
 

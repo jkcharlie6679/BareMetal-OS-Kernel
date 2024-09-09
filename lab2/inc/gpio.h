@@ -1,4 +1,9 @@
+#ifndef GPIO_H
+#define GPIO_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define MMIO_BASE       0x3F000000 // Physical addresses range from 0x3F000000 to 0x3FFFFFFF for peripherals.
 
@@ -20,3 +25,9 @@
 #define GPPUD           ((volatile unsigned int*)(MMIO_BASE+0x00200094))
 #define GPPUDCLK0       ((volatile unsigned int*)(MMIO_BASE+0x00200098))
 #define GPPUDCLK1       ((volatile unsigned int*)(MMIO_BASE+0x0020009C))
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

@@ -1,5 +1,12 @@
+#ifndef FDTB_H
+#define FDTB_H
 
-#define uint32_t unsigned int
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// #define uint32_t unsigned int
+#include <stdint.h>
 
 #define FDT_BEGIN_NODE 0x00000001
 #define FDT_END_NODE 0x00000002
@@ -26,9 +33,14 @@ struct fdt_prod{
   uint32_t nameoff;
 };
 
+extern char* fdtb_place;
 
-extern void* CPIO_DEFAULT_PLACE; 
-char* dtb_place;
 typedef void (*dtb_callback)(uint32_t node_type, char *name, void *value, uint32_t name_size);
 void fdt_traverse(dtb_callback callback);
 void initramfs_callback(uint32_t node_type, char *name, void *value, uint32_t name_size);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
