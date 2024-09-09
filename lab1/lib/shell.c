@@ -1,8 +1,21 @@
+#include <stdint.h>
 #include "printf.h"
 #include "string.h"
 #include "uart.h"
 #include "mailbox.h"
 #include "reboot.h"
+
+static void print_hardware_info () {
+  uint32_t board_ver = 0;
+  uint32_t mem_start_addr = 0;
+  uint32_t mem_size = 0;
+  mbox_board_ver(&board_ver);
+  mbox_mem_info(&mem_start_addr, &mem_size);
+  printf("ARM memory size: 0x%08x\n\r", board_ver);
+  printf("ARM memory base address: 0x%08x\n\r", mem_start_addr);
+  printf("ARM memory size: 0x%08x\n\r", mem_size);
+}
+
 
 void shell (char *input) {
   char read = 0;
@@ -30,19 +43,7 @@ void shell (char *input) {
         printf("Bye bye~\n\r");
         reset(300);
       } else if(!strcmp(input, "sysinfo")) {
-
-        if (mailbox_property(MAILBOX_TAG_BOARD_VISION, 4, MBOX_CH_PROP))
-          printf("Board version: 0x%08x\n\r", mbox[5]);
-        else
-          printf("Board version: querry error.\n\r");
-
-        if (mailbox_property(MAILBOX_TAG_MEMORY, 8, MBOX_CH_PROP)) {
-          printf("ARM memory base address: 0x%08x\n\r", mbox[5]);
-          printf("ARM memory size: 0x%08x\n\r", mbox[6]);
-        } else {
-          printf("ARM memory base address: querry error.\n\r");
-          printf("ARM memory size: querry error.\n\r");
-        }
+        print_hardware_info();
       } else {
         printf("Please use \"help\" to get information.\n\r");
       }

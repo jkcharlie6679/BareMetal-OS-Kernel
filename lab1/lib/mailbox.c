@@ -1,6 +1,7 @@
 #include "gpio.h"
 #include "uart.h"
 #include "mailbox.h"
+#include "mailbox.h"
 
 volatile unsigned int  __attribute__((aligned(16))) mbox[8];
 
@@ -44,4 +45,15 @@ int mailbox_property(unsigned int identifier, unsigned int buffer_size, unsigned
   if (mbox_call(ch))
     return 1;
   return 0; 
+}
+
+void mbox_board_ver(uint32_t *board_ver) {
+  mailbox_property(MAILBOX_TAG_BOARD_VISION, 4, MBOX_CH_PROP);
+  *board_ver = mbox[5];
+}
+
+void mbox_mem_info(uint32_t *mem_start_addr, uint32_t *mem_size) {
+  mailbox_property(MAILBOX_TAG_MEMORY, 8, MBOX_CH_PROP);
+  *mem_start_addr = mbox[5];
+  *mem_size = mbox[6];
 }
