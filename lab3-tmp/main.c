@@ -44,14 +44,15 @@ static void shell () {
       if (args_num != 0) {
         printf("\n\r");
         if (!strcmp(args[0], "help")) {
-          printf("help       : print this help menu\n\r");
-          printf("hello      : print Hello World!\n\r");
-          printf("reboot     : reboot the device\n\r");
-          printf("sysinfo    : print the system information\n\r");
-          printf("ls         : list the file\n\r");
-          printf("cat <file> : print the content of the file\n\r");
-          printf("exec <file>: exec the content of the file\n\r");
-          printf("clock      : print the core timer time every 2 seconds\n\r");
+          printf("help                       : print this help menu\n\r");
+          printf("hello                      : print Hello World!\n\r");
+          printf("reboot                     : reboot the device\n\r");
+          printf("sysinfo                    : print the system information\n\r");
+          printf("ls                         : list the file\n\r");
+          printf("cat <file>                 : print the content of the file\n\r");
+          printf("exec <file>                : exec the content of the file\n\r");
+          printf("clock                      : print the core timer time every 2 seconds\n\r");
+          printf("setTimeout <MESSAGE> <TIME>: Print the message when timeout\n\r");
         } else if(!strcmp(args[0], "hello")) {
           printf("Hello World!\n\r");
         } else if(!strcmp(args[0], "reboot")) {
@@ -67,7 +68,10 @@ static void shell () {
           if(args_num == 2)
             cpio_exec(args[1]);
         } else if (!strcmp(args[0], "clock")) {
-          core_timer_enable();
+          add_timer(clock_alert, "clock_alert", 2);
+        } else if (!strcmp(input, "setTimeout")) {
+          if (args_num == 3)
+            add_timer(timeout_print, args[1], atoi(args[2]));
         } else {
           printf("Please use \"help\" to get information.\n\r");
         }
@@ -86,9 +90,8 @@ void main(char * arg) {
 
   uart_init();
 
-  __asm__ __volatile__(
-    "msr DAIFClr, 0xf" // enable interrupt el1 -> el1 such as core time interrupt
-  ); 
+  interrupt_enable(); // el0 -> el0
+  core_timer_enable();
 
   fdt_traverse(initramfs_callback);
 
