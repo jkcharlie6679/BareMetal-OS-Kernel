@@ -1,6 +1,7 @@
 #include "exception.h"
 #include "printf.h"
 #include "timer.h"
+#include "uart.h"
 
 void invalid_exception_router(uint64_t x0) {
   uint64_t elr_el1, esr_el1, spsr_el1;
@@ -19,5 +20,13 @@ void invalid_exception_router(uint64_t x0) {
 void irq_router(uint64_t x0) {
   if (*CORE0_INTERRUPT_SOURCE & INTERRUPT_SOURCE_CNTPNSIRQ) {
     clock_alert();
-  } 
+  } else if (*IRQS1_PENDING & (0x01 << 29)) {
+    if (*AUX_MU_IIR & (0b01 << 1)) {  // can write
+      disable_uart_w_interrupt();
+      uart_interrupt_w_handler();
+    } else if (*AUX_MU_IIR & (0b10 << 1)) {  //can read
+      disable_uart_r_interrupt();
+      uart_interrupt_r_handler();
+    }
+  }
 }

@@ -28,7 +28,8 @@ static void shell () {
   int args_num = 0;
   while (1) {
     char read = 0;
-    read = uart_getc();
+    read = async_uart_getc();
+    // read = uart_getc();
     if (read != '\n' && read != 0x7f) { // 0x7f delete
       append_str(input, read);
       printf("%c", read);
@@ -43,12 +44,14 @@ static void shell () {
       if (args_num != 0) {
         printf("\n\r");
         if (!strcmp(args[0], "help")) {
-          printf("help      : print this help menu\n\r");
-            printf("hello     : print Hello World!\n\r");
-            printf("reboot    : reboot the device\n\r");
-            printf("sysinfo   : print the system information\n\r");
-            printf("ls        : list the file\n\r");
-            printf("cat <file>: print the content of the file\n\r");
+          printf("help       : print this help menu\n\r");
+          printf("hello      : print Hello World!\n\r");
+          printf("reboot     : reboot the device\n\r");
+          printf("sysinfo    : print the system information\n\r");
+          printf("ls         : list the file\n\r");
+          printf("cat <file> : print the content of the file\n\r");
+          printf("exec <file>: exec the content of the file\n\r");
+          printf("clock      : print the core timer time every 2 seconds\n\r");
         } else if(!strcmp(args[0], "hello")) {
           printf("Hello World!\n\r");
         } else if(!strcmp(args[0], "reboot")) {
