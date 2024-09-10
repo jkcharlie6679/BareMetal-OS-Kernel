@@ -33,7 +33,7 @@ void fdt_traverse(dtb_callback callback){
       pointer += 8;  // add the fdt_prod len
       uint32_t len = little_2_big_u32(prod_ptr->len);
       char* name = (char*)dt_strings_ptr + little_2_big_u32(prod_ptr->nameoff);
-      printf("name: %s, addr: 0x%x\n\r", name, pointer);
+      // printf("name: %s, addr: 0x%x\n\r", name, pointer); // feature for lab 2
       callback(token_type, name, pointer, len);
       pointer += len;
       if ((uint64_t)pointer % 4 !=0) {

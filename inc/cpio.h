@@ -24,8 +24,9 @@ typedef struct cpio_header {
 
 extern void* CPIO_DEFAULT_PLACE;
 
-void cpio_ls();
+void cpio_ls(void);
 void cpio_cat(char *str);
+void cpio_exec(char *str);
 
 #ifdef __cplusplus
 }
