@@ -6,6 +6,7 @@
 #include "mailbox.h"
 #include "printf.h"
 #include "cpio.h"
+#include "timer.h"
 
 #define BUF_MAX_SIZE 100
 #define BUF_ARG_SIZE 100
@@ -59,10 +60,12 @@ static void shell () {
           cpio_ls();
         } else if (!strcmp(args[0], "cat")) {
           cpio_cat(args[1]);
-        } else if(!strcmp(args[0], "exec")) {
+        } else if (!strcmp(args[0], "exec")) {
           if(args_num == 2)
             cpio_exec(args[1]);
-        }else {
+        } else if (!strcmp(args[0], "clock")) {
+          core_timer_enable();
+        } else {
           printf("Please use \"help\" to get information.\n\r");
         }
         printf("# ");
@@ -76,9 +79,14 @@ static void shell () {
 
 void main(char * arg) {
 
+  fdtb_place = arg;
+
   uart_init();
 
-  fdtb_place = arg;
+  __asm__ __volatile__(
+    "msr DAIFClr, 0xf" // enable interrupt el1 -> el1 such as core time interrupt
+  ); 
+
   fdt_traverse(initramfs_callback);
 
   printf("\n\r\n\rWelcome!!!\n\r# ");

@@ -1,8 +1,6 @@
-
 .section ".text"
 
-.global _start
-.global exception_vector_table
+.global _start, exception_vector_table
 
 _start:
   b       2f
@@ -140,8 +138,6 @@ error_invalid_el1t:
   bl invalid_exception_router
   load_all
   eret
-        
-
 
 sync_el1h:
   save_all
@@ -152,7 +148,7 @@ sync_el1h:
 irq_el1h:
   save_all
   mov x0,5
-  bl invalid_exception_router
+  bl irq_router
   load_all
   eret
 fiq_invalid_el1h:
@@ -167,8 +163,6 @@ error_invalid_el1h:
   bl invalid_exception_router
   load_all
   eret
-
-
 
 sync_el0_64:
   save_all
@@ -194,8 +188,6 @@ error_invalid_el0_64:
   bl invalid_exception_router
   load_all
   eret
-
-
 
 sync_invalid_el0_32:
   save_all

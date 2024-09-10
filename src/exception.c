@@ -1,5 +1,6 @@
 #include "exception.h"
 #include "printf.h"
+#include "timer.h"
 
 void invalid_exception_router(uint64_t x0) {
   uint64_t elr_el1, esr_el1, spsr_el1;
@@ -13,4 +14,10 @@ void invalid_exception_router(uint64_t x0) {
   printf("esr_el1 : 0x%x\r\n", esr_el1);
   printf("spsr_el1 : 0x%x\r\n", spsr_el1);
   printf("exception number: 0x%x\r\n",x0);
+}
+
+void irq_router(uint64_t x0) {
+  if (*CORE0_INTERRUPT_SOURCE & INTERRUPT_SOURCE_CNTPNSIRQ) {
+    clock_alert();
+  } 
 }
