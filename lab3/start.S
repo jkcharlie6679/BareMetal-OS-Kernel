@@ -1,12 +1,11 @@
-
 .section ".text"
 
-.global _start
+.global _start, exception_vector_table
 
 _start:
-  bl      2f
+  b       2f
 1:  
-  wfe // Wait For Event
+  wfe
   b       1b
 2:  
   bl      from_el2_to_el1
@@ -14,47 +13,68 @@ _start:
 set_exception_vector_table:
   adr x1, exception_vector_table
   msr vbar_el1, x1
-  
-  ldr     x1, =_start  // set top of stack just before our code (stack grows to a lower address per AAPCS64)
+
+  // set top of stack just before our code (stack grows to a lower address per AAPCS64)
+  ldr     x1, =_start
   mov     sp, x1
-    
+
   // clear bss
   ldr     x1, =__bss_start
   ldr     w2, =__bss_size
-3:  
+3:
   cbz     w2, 4f
-  str     xzr, [x1], #8 // put xzr to x1 then x1 = x1 + 8  xzr zero register. xzr = 0
+  str     xzr, [x1], #8 // put xzr to x1 then x1 = x1 + 8  xzr zero register
   sub     w2, w2, #1
   cbnz    w2, 3b
-
-4:  
+    
+4:
   bl      main
   b       1b
-
-.global from_el1_to_el0
-from_el1_to_el0:
-  mov x1,        xzr        // EL0t, all interrupts enabled, 0x3c0 for interrupts disabled
-  msr spsr_el1,  x1
-  // set elr_el1 to the user program’s address
-  msr elr_el1,   lr           // return address to the caller
-  // set the user program’s stack pointer to a proper position by setting sp_el0.
-  mov x1,        sp
-  msr sp_el0,    x1           // set stack of el0 as orinary stack pointer
-  eret                        // jump to user code (jump to elr_el1)
 
 from_el2_to_el1:
   mov x1, (0b11 << 20) // this fixes printf (printf use stdargs, which access register q0~q7, and those are SIMD registers)
   msr cpacr_el1, x1
-  mov x1, (1 << 31) // EL1 uses aarch64
+  mov x1, (1 << 31)    // EL1 uses aarch64
   msr hcr_el2, x1
-  mov x1, 0x3c5 // EL1h (SPSel = 1) with interrupt disabled
+  mov x1, 0x3c5        // EL1h (SPSel = 1) with interrupt disabled
   msr spsr_el2, x1
   msr elr_el2, lr
-  eret // return to EL1
+  eret                 // Exception return from EL2 to EL1
+
+.macro    ventry    label
+  .align    7
+  b    \label
+.endm
+
+.align 11                         // vector table should be aligned to 0x800
+exception_vector_table:
+  //Exception from the current EL while using SP_EL0
+  ventry  sync_invalid_el1t      // Synchronous EL1t
+  ventry  irq_invalid_el1t       // IRQ EL1t
+  ventry  fiq_invalid_el1t       // FIQ EL1t
+  ventry  error_invalid_el1t     // Error EL1t
+  
+  //Exception from the current EL while using SP_ELx
+  ventry  sync_el1h              // Synchronous EL1h  
+  ventry  irq_el1h               // IRQ EL1h  
+  ventry  fiq_invalid_el1h       // FIQ EL1h
+  ventry  error_invalid_el1h     // Error EL1h
+
+  //Exception from a lower EL and at least one lower EL is AArch64
+  ventry  sync_el0_64            // Synchronous 64-bit EL0
+  ventry  irq_el0_64             // IRQ 64-bit EL0
+  ventry  fiq_invalid_el0_64     // FIQ 64-bit EL0
+  ventry  error_invalid_el0_64   // Error 64-bit EL0
+      
+  //Exception from a lower EL and at least all lower EL are AArch32
+  ventry  sync_invalid_el0_32    // Synchronous 32-bit EL0
+  ventry  irq_invalid_el0_32     // IRQ 32-bit EL0
+  ventry  fiq_invalid_el0_32     // FIQ 32-bit EL0
+  ventry  error_invalid_el0_32   // Error 32-bit EL0
 
 // save general registers to stack
 .macro save_all
-  sub sp, sp, 32 * 12
+  sub sp, sp, 32 * 8
   stp x0, x1, [sp ,16 * 0]
   stp x2, x3, [sp ,16 * 1]
   stp x4, x5, [sp ,16 * 2]
@@ -71,15 +91,6 @@ from_el2_to_el1:
   stp x26, x27, [sp ,16 * 13]
   stp x28, x29, [sp ,16 * 14]
   str x30, [sp, 16 * 15]
-
-
-  //using for nested interrupt
-  mrs x0,  spsr_el1
-  str x0,  [sp, 16 * 16]
-  mrs x0,  elr_el1
-  str x0,  [sp, 16 * 17]
-
-
 .endm
 
 // load general registers from stack
@@ -100,54 +111,8 @@ from_el2_to_el1:
   ldp x26, x27, [sp ,16 * 13]
   ldp x28, x29, [sp ,16 * 14]
   ldr x30, [sp, 16 * 15]
-
-  //using for nested interrupt
-  ldr x0, [sp, 16 * 16]
-  msr spsr_el1,x0
-  ldr x0,  [sp, 16 * 17]
-  msr elr_el1, x0
-
-  ldp x0, x1, [sp ,16 * 0]  // restore x0
-
-  add sp, sp, 32 * 12
+  add sp, sp, 32 * 8
 .endm
-
-
-.macro    ventry    label
-  .align    7
-  b    \label
-.endm
-
-.align 11 // vector table should be aligned to 0x800
-.global exception_vector_table
-
-exception_vector_table:
-
-  //Exception from the current EL while using SP_EL0
-  ventry	sync_invalid_el1t			// Synchronous EL1t
-  ventry	irq_invalid_el1t			// IRQ EL1t
-  ventry	fiq_invalid_el1t			// FIQ EL1t
-  ventry	error_invalid_el1t			// Error EL1t
-  
-  //Exception from the current EL while using SP_ELx
-  ventry	sync_el1h			        // Synchronous EL1h	
-  ventry	irq_el1h		        	// IRQ EL1h	
-  ventry	fiq_invalid_el1h			// FIQ EL1h
-  ventry	error_invalid_el1h			// Error EL1h
-
-  //Exception from a lower EL and at least one lower EL is AArch64
-  ventry	sync_el0_64			        // Synchronous 64-bit EL0
-  ventry	irq_el0_64			        // IRQ 64-bit EL0
-  ventry	fiq_invalid_el0_64			// FIQ 64-bit EL0
-  ventry	error_invalid_el0_64		// Error 64-bit EL0
-      
-  //Exception from a lower EL and at least all lower EL are AArch32
-  ventry	sync_invalid_el0_32			// Synchronous 32-bit EL0
-  ventry	irq_invalid_el0_32			// IRQ 32-bit EL0
-  ventry	fiq_invalid_el0_32			// FIQ 32-bit EL0
-  ventry	error_invalid_el0_32			// Error 32-bit EL0
-
-
 
 sync_invalid_el1t:
   save_all
@@ -173,8 +138,6 @@ error_invalid_el1t:
   bl invalid_exception_router
   load_all
   eret
-        
-
 
 sync_el1h:
   save_all
@@ -201,8 +164,6 @@ error_invalid_el1h:
   load_all
   eret
 
-
-
 sync_el0_64:
   save_all
   mov x0,8
@@ -212,7 +173,7 @@ sync_el0_64:
 irq_el0_64:
   save_all
   mov x0,9
-  bl irq_router
+  bl invalid_exception_router
   load_all
   eret
 fiq_invalid_el0_64:
@@ -227,8 +188,6 @@ error_invalid_el0_64:
   bl invalid_exception_router
   load_all
   eret
-
-
 
 sync_invalid_el0_32:
   save_all
