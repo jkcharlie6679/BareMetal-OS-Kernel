@@ -1,9 +1,8 @@
-
 CROSS_COMPILER_PREFIX = aarch64-linux-gnu
-SRCS = $(wildcard src/*.c) main.c
+SRCS = $(wildcard ./src/*.c) main.c
 OBJS = $(SRCS:.c=.o)
 
-CFLAGS = -Wall -O2 -ffreestanding -nostdlib -nostartfiles # -nostdinc
+CFLAGS = -Wall -O2 -ffreestanding -nostdlib -nostartfiles
 
 all: clean bootloader.img
 

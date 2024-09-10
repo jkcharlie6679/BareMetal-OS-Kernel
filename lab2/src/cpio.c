@@ -4,7 +4,7 @@
 
 void *CPIO_DEFAULT_PLACE = NULL;
 
-int read_header(char *str, int size){
+int read_header (char *str, int size) {
   char a[size + 1];
   a[1] = 0;
   for(int i=0; i<size; i++){
@@ -13,7 +13,7 @@ int read_header(char *str, int size){
   return myHex2Int(a);
 }
 
-void cpio_ls() {
+void cpio_ls () {
   cpio_header *cpio = (cpio_header *)CPIO_DEFAULT_PLACE;
   char *header = cpio->c_magic;
   while (strcmp(header + 110, "TRAILER!!!")) {
@@ -30,7 +30,7 @@ void cpio_ls() {
   }
 }
 
-void cpio_cat(char *str){
+void cpio_cat (char *str) {
   cpio_header *cpio = (cpio_header *)CPIO_DEFAULT_PLACE;
   char *header = cpio->c_magic;
   while (strcmp(header+110, "TRAILER!!!")) {
