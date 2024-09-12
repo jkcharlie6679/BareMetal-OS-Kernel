@@ -23,6 +23,7 @@ typedef struct cpio_header {
 } cpio_header;
 
 extern void* CPIO_DEFAULT_PLACE;
+extern void* CPIO_DEFAULT_END;
 
 void cpio_ls(void);
 void cpio_cat(char *str);

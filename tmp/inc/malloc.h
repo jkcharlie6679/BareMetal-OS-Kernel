@@ -8,32 +8,32 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 
-#define PAGE_MAX_ENTRY 56
-#define MAX_CONTINUE_PAGE 32
-#define MAX_FRAME_POWER   6
-#define PAGE_SIZE 0x1000
 
 #define PAGE_NOT_ALLOCATE -1  // for the frame array which is not allocated
 #define PAGE_ALLOCATED    -2  // for the frame array is allocated
 
+#define MAX_FRAME_ORDER   15
+#define PAGE_SIZE 0x1000
+
+#define PAGE_MAX_ENTRY 0x3c000 // 0x3c000000 / PAGE_SIZE;
+#define SPIN_TABLE_START 0x0000
+#define SPIN_TABLE_END   0x1000
+
 typedef uint64_t size_t;
 
-typedef struct malloc_header {
-  unsigned int previous;
-  unsigned int chunk;
-} malloc_header;
+typedef struct page_info {
+  uint32_t status;  // PAGE_NOT_ALLOCATE || PAGE_ALLOCATED || idx for length
+  uint32_t idx;     // idx for free() to know length
+} page_info;
 
-typedef struct free_frame {
+typedef struct frame_info {
   uint32_t index;
-  // uint32_t queue_index;
-  struct free_frame *next;
-} free_frame;
+  struct frame_info *next;
+} frame_info;
 
-void* simple_malloc(size_t size);
 void page_init(void);
-int page_allocate(size_t size);
-void page_free(int idx);
 void *malloc(size_t size);
+void free(void *addr);
 
 #ifdef __cplusplus
 }

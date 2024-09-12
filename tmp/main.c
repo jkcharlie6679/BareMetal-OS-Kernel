@@ -11,6 +11,20 @@
 #define BUF_MAX_SIZE 100
 #define BUF_ARG_SIZE 100
 
+char* CMD[][2] = {
+  {"help                       ", "print this help menu"},
+  {"hello                      ", "print Hello World!"},
+  {"reboot                     ", "reboot the device"},
+  {"sysinfo                    ", "print the system information"},
+  {"ls                         ", "list the file"},
+  {"cat <file>                 ", "print the content of the file"},
+  {"exec <file>                ", "exec the content of the file"},
+  {"clock                      ", "print the core timer time every 2 seconds"},
+  {"time <MESSAGE> <TIME>", "Print the message when timeout"},
+  {"alloc <size>               ", "memory allocate"},
+  {"free <addr>                ", "free the memory"},
+};
+
 static void print_hardware_info () {
   uint32_t board_ver = 0;
   uint32_t mem_start_addr = 0;
@@ -23,8 +37,8 @@ static void print_hardware_info () {
 }
 
 static void shell () {
-  char *input = simple_malloc(sizeof(char) * BUF_MAX_SIZE);
-  char **args = simple_malloc(sizeof(char*) * BUF_ARG_SIZE);
+  char *input = malloc(sizeof(char) * BUF_MAX_SIZE);
+  char **args = malloc(sizeof(char*) * BUF_ARG_SIZE);
   int args_num = 0;
   while (1) {
     char read = 0;
@@ -44,35 +58,45 @@ static void shell () {
       if (args_num != 0) {
         printf("\n\r");
         if (!strcmp(args[0], "help")) {
-          printf("help                       : print this help menu\n\r");
-          printf("hello                      : print Hello World!\n\r");
-          printf("reboot                     : reboot the device\n\r");
-          printf("sysinfo                    : print the system information\n\r");
-          printf("ls                         : list the file\n\r");
-          printf("cat <file>                 : print the content of the file\n\r");
-          printf("exec <file>                : exec the content of the file\n\r");
-          printf("clock                      : print the core timer time every 2 seconds\n\r");
-          printf("setTimeout <MESSAGE> <TIME>: Print the message when timeout\n\r");
-        } else if(!strcmp(args[0], "hello")) {
+          for (int i = 0; sizeof(CMD) && i < sizeof(CMD) / sizeof(CMD[0]); ++i)
+            printf("%s: %s\n", CMD[i][0], CMD[i][1]);
+        } 
+        else if(!strcmp(args[0], "hello")) {
           printf("Hello World!\n\r");
-        } else if(!strcmp(args[0], "reboot")) {
+        } 
+        else if(!strcmp(args[0], "reboot")) {
           printf("Bye bye~\n\r");
           reset(300);
-        } else if(!strcmp(args[0], "sysinfo")) {
+        } 
+        else if(!strcmp(args[0], "sysinfo")) {
           print_hardware_info();
-        } else if (!strcmp(args[0], "ls")) {
+        } 
+        else if (!strcmp(args[0], "ls")) {
           cpio_ls();
-        } else if (!strcmp(args[0], "cat")) {
+        } 
+        else if (!strcmp(args[0], "cat")) {
           cpio_cat(args[1]);
-        } else if (!strcmp(args[0], "exec")) {
+        } 
+        else if (!strcmp(args[0], "exec")) {
           if(args_num == 2)
             cpio_exec(args[1]);
-        } else if (!strcmp(args[0], "clock")) {
+        } 
+        else if (!strcmp(args[0], "clock")) {
           add_timer(clock_alert, "clock_alert", 2);
-        } else if (!strcmp(input, "setTimeout")) {
+        } 
+        else if (!strcmp(args[0], "alloc")) {
+          if (args_num == 2)
+            printf("%x\n", malloc(atoi(args[1])));
+        } 
+        else if (!strcmp(args[0], "free")) {
+          if (args_num == 2)
+            free((void *)(uint64_t)atoi(args[1]));
+        } 
+        else if (!strcmp(input, "time")) {
           if (args_num == 3)
             add_timer(timeout_print, args[1], atoi(args[2]));
-        } else {
+        } 
+        else {
           printf("Please use \"help\" to get information.\n\r");
         }
         printf("# ");
@@ -95,13 +119,8 @@ void main(char * arg) {
   fdt_traverse(initramfs_callback);
 
   page_init();
-  page_allocate(2 * 0x1000);
-  // ;
-  page_allocate(1 * 0x1000);
-  // page_allocate(1 * 0x1000);
-  page_free(50);
-  page_free(48);
-  printf("\n\r\n\rWelcome!!!\n\r# ");
+
+  printf("\n\nWelcome!!!\n# ");
 
   shell();
 }

@@ -5,6 +5,7 @@
 #include "cpio.h"
 
 char *fdtb_place = NULL;
+uint64_t fdtb_size = 0;
 
 void fdt_traverse(dtb_callback callback){
   struct fdt_header* header = (struct fdt_header*) fdtb_place;
@@ -15,6 +16,7 @@ void fdt_traverse(dtb_callback callback){
   }
 
   uint32_t struct_size = little_2_big_u32(header->size_dt_struct);
+  fdtb_size = struct_size;
   char* dt_struct_ptr = (char*)((char*)header + little_2_big_u32(header->off_dt_struct));
   char* dt_strings_ptr = (char*)((char*)header + little_2_big_u32(header->off_dt_strings));
   char* end = (char*)dt_struct_ptr + struct_size;
@@ -46,5 +48,8 @@ void fdt_traverse(dtb_callback callback){
 void initramfs_callback(uint32_t node_type, char *name, void *value, uint32_t name_size) {
   if (node_type == FDT_PROP && strcmp(name, "linux,initrd-start") == 0) {
     CPIO_DEFAULT_PLACE = (void *)(uint64_t)little_2_big_u32(*(uint32_t*)value);
+  }
+  if (node_type == FDT_PROP && strcmp(name,"linux,initrd-end") == 0) {
+    CPIO_DEFAULT_END = (void *)(uint64_t)little_2_big_u32(*(uint32_t*)value);
   }
 }

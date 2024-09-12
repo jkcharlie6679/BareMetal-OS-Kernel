@@ -4,6 +4,7 @@
 #include "malloc.h"
 
 void *CPIO_DEFAULT_PLACE = NULL;
+void *CPIO_DEFAULT_END = NULL;
 
 int read_header (char *str, int size) {
   char a[size + 1];
@@ -69,7 +70,7 @@ void cpio_exec(char *str) {
     }
     if (!strcmp(header + 110, str) && filesize != 0) {
       data = header + 110 + namesize;
-      char *sp = simple_malloc(0x20); // stack point
+      char *sp = malloc(0x20); // stack point
       printf("addr: 0x%x\n\r", data);
       asm("mov x1, 0x3c0\n\t"
           "msr spsr_el1, x1\n\t"

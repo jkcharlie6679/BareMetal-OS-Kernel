@@ -1,6 +1,7 @@
 SECTIONS
 {
   . = 0x80000;
+  _kernel_start = .;
   .text : { *(.text) }
   
   .bss (NOLOAD) : {
@@ -10,6 +11,7 @@ SECTIONS
     *(COMMON)
     __bss_end = .;
   }
+  _kernel_end = .;
   _heap_start = .;
   _end = .;
 }

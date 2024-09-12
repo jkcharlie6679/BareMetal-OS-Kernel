@@ -34,6 +34,7 @@ struct fdt_prod{
 };
 
 extern char* fdtb_place;
+extern uint64_t fdtb_size;
 
 typedef void (*dtb_callback)(uint32_t node_type, char *name, void *value, uint32_t name_size);
 void fdt_traverse(dtb_callback callback);

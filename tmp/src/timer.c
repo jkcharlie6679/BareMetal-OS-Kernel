@@ -73,7 +73,7 @@ void timeout_print(char *str) {
 
 
 void add_timer(callback_typ callback, char *msg, int time) {
-  timer_list *timer = (timer_list*)simple_malloc(sizeof(timer_list));
+  timer_list *timer = (timer_list*)malloc(sizeof(timer_list));
   timer->expired_time = (uint64_t)time + clock_time();
   timer->call_back = callback;
   timer->next = NULL;
