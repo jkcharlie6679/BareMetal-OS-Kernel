@@ -7,18 +7,10 @@ extern unsigned long _kernel_start;
 extern unsigned long _kernel_end;
 extern unsigned char _heap_start;
 
-typedef struct pool_header {
-  uint16_t chunck_size;
-  uint16_t total;
-  uint16_t used;
-  uint16_t shifting;  // for align 16
-  struct pool_header *next;
-} pool_header;
-
 static char* heap_top = NULL;
-page_info *pages = NULL;
-frame_info *free_frame_list[MAX_FRAME_ORDER + 1] = {0}; // linked-list for free page
-pool_header *pool = NULL;
+static page_info *pages = NULL;
+static frame_info *free_frame_list[MAX_FRAME_ORDER + 1] = {0}; // linked-list for free page of different order frame
+static pool_header *pool = NULL;                               // link-list for the frame be used in the malloc
 
 // static void pages_state() {
 //   printf("--------------pages state--------------\n\r");
@@ -98,11 +90,11 @@ static void delete_from_frame_list(int level, int idx) {
     free_frame_list[level] = free_frame_list[level]->next;  // remove head
 }
 
-static int devide_frame(int level) {
+static int divide_frame(int level) {
   if (level > MAX_FRAME_ORDER)
     return -1;
-  if (free_frame_list[level] == NULL)
-    devide_frame(level + 1);
+  if (free_frame_list[level] == NULL) // no frame to divide than find into larger size
+    divide_frame(level + 1);
   if (free_frame_list[level]) {
     int idx = free_frame_list[level]->index;
     free_frame_list[level] = free_frame_list[level]->next; // pop from free list
@@ -112,7 +104,7 @@ static int devide_frame(int level) {
     add_to_frame_list(level - 1, idx);
     return 0;
   }
-  return -1; // fail to devide
+  return -1; // fail to divide
 }
 
 static int get_free_frame(int level) {
@@ -129,7 +121,7 @@ static int get_free_frame(int level) {
 static int frame_allocate(uint32_t level) {  // size: number of page will be power of 2
   if (!free_frame_list[level]) {
     if (level < MAX_FRAME_ORDER - 1)
-      devide_frame(level + 1);
+      divide_frame(level + 1);
     else {
       printf("Request too LARGE size!!\n\r");
       return -1;
@@ -143,8 +135,8 @@ static int frame_allocate(uint32_t level) {  // size: number of page will be pow
 static void merge_frame(int idx) {
   int level = pages[idx].status;
   int size = power2(pages[idx].status);  // pages size
-  int merge_idx = idx + size;     // merge_idx need to be the second half
-  if ((idx + size) % (2 * size) == 0) { // idx from funxtion parameter is second half
+  int merge_idx = idx + size;            // merge_idx need to be the second half
+  if ((idx + size) % (2 * size) == 0) {  // idx from funxtion parameter is second half
     int tmp = idx;
     idx = idx - size;
     merge_idx = tmp;
@@ -175,21 +167,21 @@ static void *open_frame_to_pool(size_t size) {
     level = log2(size - 1) + 1;
   uint64_t page_index = frame_allocate(level);
 
-  pool_header *page = (pool_header *)(PAGE_SIZE * page_index);
+  pool_header *frame = (pool_header *)(PAGE_SIZE * page_index);
 
-  page->chunck_size = size;
-  page->total = (PAGE_SIZE - sizeof(pool_header) - 0x10) / (size + 1); // one for record the chunck used or not
-  page->used = 1;
-  page->next = pool;
-  page->shifting = 0;
-  if (page->total % 0x10)
-    page->shifting = 0x10 - page->total % 0x10;
-  pool = page;
-  uint8_t *chunck_info = (uint8_t *)(((uint64_t)page) + sizeof(pool_header));
+  frame->chunck_size = size;
+  frame->total = (PAGE_SIZE - sizeof(pool_header) - 0x10) / (size + 1); // one for record the chunck used or not
+  frame->used = 1;
+  frame->next = pool;
+  frame->shifting = 0;
+  if (frame->total % 0x10)
+    frame->shifting = 0x10 - frame->total % 0x10;
+  pool = frame;
+  uint8_t *chunck_info = (uint8_t *)(((uint64_t)frame) + sizeof(pool_header));
   chunck_info[0] = 1;
-  for (int i = 1; i < page->total; i++)
+  for (int i = 1; i < frame->total; i++)
     chunck_info[i] = 0;
-  return (void *)(PAGE_SIZE * page_index + sizeof(pool_header) + page->total + page->shifting);
+  return (void *)(PAGE_SIZE * page_index + sizeof(pool_header) + frame->total + frame->shifting);
 }
 
 void *malloc(size_t size) {
@@ -205,10 +197,10 @@ void *malloc(size_t size) {
       cur = cur->next;
     else {
       cur->used += 1;
-      uint8_t *page_info = (uint8_t *)((uint64_t)cur + sizeof(pool_header));
+      uint8_t *chunck_info = (uint8_t *)((uint64_t)cur + sizeof(pool_header));
       for (int i = 0; i < cur->total; i++) {
-        if (page_info[i] == 0) {
-          page_info[i] = 1;
+        if (chunck_info[i] == 0) {
+          chunck_info[i] = 1;
           return (void *)((uint64_t)cur + sizeof(pool_header) + cur->total + cur->shifting + cur->chunck_size * i);
         }
       }
@@ -235,10 +227,12 @@ static void remove_page_from_pool(void *addr) {
 void free(void *addr) {
   pool_header *page = (pool_header *)((uint64_t)addr - ((uint64_t)(addr) % PAGE_SIZE));  // find the pool_header addr
   int index = (((uint64_t)(addr) - page->total - page->shifting - sizeof(pool_header)) % PAGE_SIZE) / page->chunck_size;
+  
+  // if the frame still using just update the frame info
   if (page->used != 1) {
     page->used -= 1;
-    uint8_t *page_info = (uint8_t *)(addr + sizeof(pool_header));
-    page_info[index] = 0;
+    uint8_t *chunck_info = (uint8_t *)(addr + sizeof(pool_header));
+    chunck_info[index] = 0;
   } else {
     remove_page_from_pool(addr);
   }
@@ -261,6 +255,7 @@ static void memory_reserve(uint64_t start, uint64_t end) {
   while (pages[head].status == PAGE_NOT_ALLOCATE)
     head--;
 
+  // let the start idx be the first pagse of the frame
   while (pages[head].status != PAGE_ALLOCATED) {
     if (head == start_idx) {
       pages[head].idx = pages[head].status;
@@ -268,6 +263,8 @@ static void memory_reserve(uint64_t start, uint64_t end) {
         pages[head + i].status = PAGE_ALLOCATED;
       break;
     }
+
+    // divede the frame into two part
     pages[head].status = pages[head].status - 1;
     pages[head + power2(pages[head].status)].status = pages[head].status;
     int half = head + power2(pages[head].status);
@@ -276,7 +273,9 @@ static void memory_reserve(uint64_t start, uint64_t end) {
     } 
   }
 
+  // the frame of start idx can't over the end idx
   while (head + power2(pages[head].idx) - 1 > end_idx) {
+    // divede the frame into two part until the page idx larger than the end idx won't be covered
     pages[head].idx--;
     int half = head + power2(pages[head].idx);
     pages[half].status = pages[head].idx;
@@ -284,6 +283,7 @@ static void memory_reserve(uint64_t start, uint64_t end) {
       pages[half + i].status = PAGE_NOT_ALLOCATE;
   }
 
+  // if the frame of the start idx can fully cover the whole length
   if (head + power2(pages[head].idx) - 1 == end_idx)
     return;
 
@@ -291,8 +291,9 @@ static void memory_reserve(uint64_t start, uint64_t end) {
   while (pages[head].status == PAGE_NOT_ALLOCATE)
     head--;
 
-
+  // let the last page of the last frame be the end idx
   while (pages[end_idx].status != PAGE_ALLOCATED) {
+    // find the correct frame
     if (head + power2(pages[head].status) - 1 == end_idx) {
       pages[head].idx = pages[head].status;
       for (int i = 0; i < power2(pages[head].idx); ++i)
@@ -300,6 +301,7 @@ static void memory_reserve(uint64_t start, uint64_t end) {
       break;
     }
 
+    // divede the frame into two part
     pages[head].status = pages[head].status - 1;
     int half = head + power2(pages[head].status);
     pages[half].status = pages[head].status;
@@ -308,6 +310,7 @@ static void memory_reserve(uint64_t start, uint64_t end) {
     } 
   }
 
+  // for the ramin pages set to the ALLOCATED state
   for (int i = start_idx; i <= end_idx; i++) {
     if (pages[i].status == PAGE_NOT_ALLOCATE)
       pages[i].status = PAGE_ALLOCATED;
@@ -325,6 +328,7 @@ void page_init(void) {
   char *sim_alloc_start = (char *)pages;
   char *sim_alloc_end = sim_alloc_start + PAGE_MAX_ENTRY * sizeof(frame_info);
 
+  // divide the all page to the property size of frame
   int non_init = PAGE_MAX_ENTRY;
   for (int start = 0; start < PAGE_MAX_ENTRY; ) {
     pages[start].status = log2(non_init);
@@ -339,17 +343,18 @@ void page_init(void) {
     non_init -= power2(log2(non_init));
   }
 
+  // reverse the memory for some specific usage
   memory_reserve((uint64_t)SPIN_TABLE_START, (uint64_t)SPIN_TABLE_END);       // spin table
   memory_reserve((uint64_t)&_kernel_start, (uint64_t)&_kernel_end);           // kernel
   memory_reserve((uint64_t)sim_alloc_start, (uint64_t)sim_alloc_end);         // simple allocate for the page management
   memory_reserve((uint64_t)CPIO_DEFAULT_PLACE, (uint64_t)CPIO_DEFAULT_END);   // cpio size
   memory_reserve((uint64_t)fdtb_place, (uint64_t)fdtb_place + fdtb_size);     // dtbmak
 
+  // put the frame to the free frame list
   for (int head = 0; head < PAGE_MAX_ENTRY; ) {
     if (pages[head].status != PAGE_NOT_ALLOCATE && pages[head].status != PAGE_ALLOCATED) {
       add_to_frame_list(pages[head].status, head);
     }
     head += power2(pages[head].idx);
   }
-
 }

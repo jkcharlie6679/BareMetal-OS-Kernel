@@ -26,8 +26,19 @@ typedef struct page_info {
   uint32_t idx;     // idx for free() to know length
 } page_info;
 
-typedef struct frame_info {
-  uint32_t index;
+// ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+// | pool_header | used or not array (size equal to total) | shifting | chuncks |
+// ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+typedef struct pool_header {
+  uint16_t chunck_size;
+  uint16_t total;            // how many chunck can use
+  uint16_t used;
+  uint16_t shifting;         // for total length (recode the chunck in frame used or not) to align 16
+  struct pool_header *next;
+} pool_header;
+
+typedef struct frame_info { // the frame put in the free frame list
+  uint32_t index;           // store the index of page
   struct frame_info *next;
 } frame_info;
 
